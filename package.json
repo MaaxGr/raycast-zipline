@@ -30,12 +30,20 @@
       "title": "Zipline API Token",
       "description": "",
       "type": "password"
+    },
+    {
+      "name": "defaultFileLocation",
+      "title": "Default File Location",
+      "description": "The default location where the screenshot are saved",
+      "type": "directory",
+      "default": "~/Desktop"
     }
   ],
   "dependencies": {
     "@raycast/api": "^1.86.0",
     "@raycast/utils": "^1.17.0",
     "axios": "^1.7.9",
+    "isbinaryfile": "^5.0.4",
     "untildify": "^5.0.0"
   },
   "devDependencies": {
