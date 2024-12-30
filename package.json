@@ -16,7 +16,14 @@
       "title": "Upload Screenshot",
       "description": "",
       "mode": "view"
+    },
+    {
+      "name": "upload-clipboard",
+      "title": "Upload from Clipboard",
+      "description": "",
+      "mode": "view"
     }
+
   ],
   "preferences": [
     {

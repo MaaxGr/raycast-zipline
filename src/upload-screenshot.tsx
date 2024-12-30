@@ -59,6 +59,8 @@ export default function Command() {
 
         let markdown = "";
 
+        console.log(encodeURI(path));
+
         if (containsMdSupportedExtension(path)) {
           markdown = `![Image Preview](${encodeURI(path)}?raycast-height=350)`;
         } else if (!isBinaryFileSync(path)) {
