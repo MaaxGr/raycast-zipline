@@ -84,5 +84,17 @@ export function containsMdSupportedExtension(filePath: string): boolean {
   const extension = filePath.substring(lastDotIndex).toLowerCase();
   return supportedExtensions.includes(extension);
 
+}
 
+export function isDisplayableMIMEType(mimeType: string): boolean {
+  const nonBinaryMimeTypes = [
+    "text/plain", "text/html", "text/css", "application/javascript", "text/javascript",
+    "application/json", "application/xml", "text/xml", "application/rss+xml",
+    "application/atom+xml", "application/xslt+xml", "text/markdown", "text/sgml",
+    "text/csv", "text/tab-separated-values", "application/x-yaml", "text/yaml",
+    "text/x-python", "text/x-java-source", "application/x-perl", "application/x-ruby",
+    "application/x-shellscript", "text/x-log", "text/vcard", "text/calendar"
+  ];
+
+  return nonBinaryMimeTypes.includes(mimeType.toLowerCase());
 }

@@ -40,7 +40,6 @@ export default function Command() {
 
       navigation.pop();
     } catch (error: any) {
-      console.error(error.message);
       await showToast(Toast.Style.Failure, "Error", error.message);
     }
   };

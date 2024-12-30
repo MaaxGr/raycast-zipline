@@ -41,7 +41,6 @@ export default function Command() {
         await showToast(Toast.Style.Failure, "Upload failed", response.statusText);
       }
     } catch (error: any) {
-      console.error(error.message);
       await showToast(Toast.Style.Failure, "Error", error.message);
     }
   };
@@ -58,8 +57,6 @@ export default function Command() {
         const fileSize = `${(stats.size / 1024).toFixed(2)} KB`;
 
         let markdown = "";
-
-        console.log(encodeURI(path));
 
         if (containsMdSupportedExtension(path)) {
           markdown = `![Image Preview](${encodeURI(path)}?raycast-height=350)`;
