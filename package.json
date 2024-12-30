@@ -22,8 +22,13 @@
       "title": "Upload from Clipboard",
       "description": "",
       "mode": "view"
+    },
+    {
+      "name": "manage-zipline-files",
+      "title": "Manage Zipline files",
+      "description": "",
+      "mode": "view"
     }
-
   ],
   "preferences": [
     {
