@@ -54,6 +54,12 @@ export async function getPage(pageNumber: number = 1): Promise<FileInfo[]> {
   return response.data;
 }
 
+export async function getFileContent(url: string) {
+  const response = await axios.get<string>(url);
+  return response.data;
+}
+
+
 export interface FileInfo {
   createdAt: string; // ISO string for creation date
   expiresAt: string | null; // ISO string for expiration or null if none
