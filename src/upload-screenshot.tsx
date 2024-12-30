@@ -59,11 +59,8 @@ export default function Command() {
 
         let markdown = "";
 
-        // markdown = "<span style="color: red;">Can't display binary file</span>";
-
         if (containsMdSupportedExtension(path)) {
-          markdown = `<h1>Markdown file</h1>`;
-          //markdown = `![Image Preview](${encodeURI(path)}?raycast-height=350&raycast-tint-color=yellow)`;
+          markdown = `![Image Preview](${encodeURI(path)}?raycast-height=350&raycast-tint-color=yellow)`;
         } else if (!isBinaryFileSync(path)) {
           markdown = readFirstCharacters(path, 10_000);
         } else {
