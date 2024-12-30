@@ -60,7 +60,7 @@ export default function Command() {
         let markdown = "";
 
         if (containsMdSupportedExtension(path)) {
-          markdown = `![Image Preview](${encodeURI(path)}?raycast-height=350&raycast-tint-color=yellow)`;
+          markdown = `![Image Preview](${encodeURI(path)}?raycast-height=350)`;
         } else if (!isBinaryFileSync(path)) {
           markdown = readFirstCharacters(path, 10_000);
         } else {
