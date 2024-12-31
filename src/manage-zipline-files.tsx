@@ -26,7 +26,13 @@ export default function Command() {
 
           // Fetch file content if the MIME type is displayable
           if (isDisplayableMIMEType(fileInfo.mimetype)) {
-            fileContent = await getFileContent(`${preferences.ziplineBaseUrl}${fileInfo.url}`);
+            let url = `${preferences.ziplineBaseUrl}${fileInfo.url}`.replace("/u/", "/raw/");
+
+            if (fileInfo.password == true) {
+              fileContent = "Password protected files are not supported";
+            } else {
+              fileContent = await getFileContent(url);
+            }
           }
 
           // Return enriched file info
@@ -57,12 +63,14 @@ export default function Command() {
         let markdown = "";
 
         if (item.fileContent != null) {
-          markdown = "```" + item.fileContent + "```";
+          if (item.fileInfo.name.endsWith(".md")) {
+            markdown = item.fileContent;
+          } else {
+            markdown = "```" + item.fileContent + "```";
+          }
         } else  {
-          markdown = `![Image Preview](${fullUrl})`;
+          markdown = `![Image Preview](${JSON.stringify(item.fileInfo)})`;
         }
-
-
 
         return (
           <List.Item

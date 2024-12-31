@@ -51,6 +51,12 @@ export async function getPage(pageNumber: number = 1): Promise<FileInfo[]> {
     }
   });
 
+  if (response.status != 200) {
+    console.log("url", `${preferences.ziplineBaseUrl}/api/user/paged?page=${pageNumber}`);
+    console.log("Failed to fetch page", response.statusText);
+  }
+
+
   return response.data;
 }
 
@@ -71,7 +77,7 @@ export interface FileInfo {
   maxViews: number | null; // Maximum allowed views or null if unlimited
   folderId: number | null; // ID of the folder the file belongs to or null
   size: number; // Size of the file in bytes
-  password: string | null; // Password for the file or null if none
+  password: boolean | null; // Password for the file or null if none
   thumbnail: string | null; // URL to the file's thumbnail or null
   url: string; // Relative or absolute URL to access the file
 }
