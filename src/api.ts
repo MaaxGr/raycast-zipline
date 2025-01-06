@@ -43,8 +43,19 @@ export async function uploadContent(
 
 }
 
+export async function getPageCount(favorite: boolean): Promise<number> {
+  const favoriteString = favorite ? "true" : "";
+  const preferences = getExtensionPreferences();
+  const response = await axios.get<{count: number}>(`${preferences.ziplineBaseUrl}/api/user/paged?count=true&favorite=${favoriteString}`, {
+    headers: {
+      "Authorization": preferences.ziplineApiToken,
+    }
+  });
+  return response.data.count;
+}
+
 export async function getPage(pageNumber: number = 1, favorite: boolean): Promise<FileInfo[]> {
-  let favoriteString = favorite ? "true" : "";
+  const favoriteString = favorite ? "true" : "";
   const preferences = getExtensionPreferences();
   const response = await axios.get<FileInfo[]>(`${preferences.ziplineBaseUrl}/api/user/paged?page=${pageNumber}&favorite=${favoriteString}`, {
     headers: {

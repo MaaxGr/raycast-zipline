@@ -1,9 +1,8 @@
-import { Icon, List, useNavigation } from "@raycast/api";
+import { Icon, List } from "@raycast/api";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createMarkdownImage, downloadsFolder, isDisplayableMIMEType } from "./utils";
 import { getExtensionPreferences } from "./preferences";
-import { FileInfo, getFileContent, getPage } from "./api";
-import { usePromise } from "@raycast/utils";
+import { FileInfo, getFileContent, getPage, getPageCount } from "./api";
 
 export interface RichFileInfo {
   fileInfo: FileInfo;
@@ -14,19 +13,42 @@ type State = {
   searchText: string;
   isLoading: boolean;
   hasMore: boolean;
-  data: RichFileInfo[];
+  data: FileInfo[];
+  visibleData: RichFileInfo[];
   nextPage: number;
 };
 
 const pageSize = 16;
 
-export default function Command() {
-  //const [items, setItems] = useState<RichFileInfo[]>([]); // State to hold loaded data
-  const preferences = getExtensionPreferences();
-  const navigation = useNavigation();
 
-  const [state, setState] = useState<State>({ searchText: "", isLoading: true, hasMore: true, data: [], nextPage: 0 });
+
+
+export default function Command() {
+  const preferences = getExtensionPreferences();
+
+  const [state, setState] = useState<State>({ searchText: "", isLoading: true, hasMore: true, data: [], nextPage: 1, visibleData: [] });
   const cancelRef = useRef<AbortController | null>(null);
+  const fetchedState = useRef(0);
+
+  async function loadAllData(): Promise<FileInfo[]> {
+    const favoriteCount = await getPageCount(true);
+    const normalCount = await getPageCount(false);
+
+    const items: FileInfo[] = [];
+    for (let i = 1; i <= favoriteCount; i++) {
+      const data = await getPage(i, true);
+      items.push(...data);
+    }
+
+    for (let i = 1; i <= normalCount; i++) {
+      const data = await getPage(i, false);
+      items.push(...data);
+    }
+
+    console.log("loadAllData", items.length);
+
+    return items;
+  }
 
 
 /*
@@ -69,19 +91,20 @@ export default function Command() {
 
 
   const loadNextPage = useCallback(async (searchText: string, nextPage: number, signal?: AbortSignal) => {
-    setState((previous) => ({ ...previous, isLoading: true }));
+    console.log("loadNextPage", nextPage, state.data.length);
+    //setState((previous) => ({ ...previous, isLoading: true }));
 
-    const data1 = await getPage(1, true);
-    const data2 = await getPage(1, false);
-    const newData = data1.concat(data2).sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
+    const subsetData = state.data.slice(0, Math.min(nextPage * pageSize, state.data.length))
+      .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
 
-    const richData = await Promise.all(
-      newData.map(async (fileInfo) => {
+
+    const subsetRichData = await Promise.all(
+      subsetData.map(async (fileInfo) => {
         let fileContent: string | null = null;
 
         // Fetch file content if the MIME type is displayable
         if (isDisplayableMIMEType(fileInfo.mimetype)) {
-          let url = `${preferences.ziplineBaseUrl}${fileInfo.url}`.replace("/u/", "/raw/");
+          const url = `${preferences.ziplineBaseUrl}${fileInfo.url}`.replace("/u/", "/raw/");
 
           if (fileInfo.password == true) {
             fileContent = "Password protected files are not supported";
@@ -98,18 +121,69 @@ export default function Command() {
       }),
     );
 
+    console.log('abort', signal?.aborted)
+
     if (signal?.aborted) {
       return;
     }
+
+    console.log("loadNextPage subset", subsetRichData.length);
+
     setState((previous) => ({
       ...previous,
-      data: [...previous.data, ...richData],
+      visibleData: subsetRichData,
       isLoading: false,
       hasMore: nextPage < 10,
     }));
   }, []);
 
   useEffect(() => {
+    if (fetchedState.current > 0) {
+      return () => {};
+    }
+    fetchedState.current = 1;
+
+    const controller = new AbortController();
+    cancelRef.current = controller;
+
+    console.log("INITIAL LOAD AAAAAH");
+
+    const fetchData = async () => {
+      try {
+        const items = await loadAllData()
+        setState((previous) => ({ ...previous, data: items }));
+      } catch (error: any) {
+        if (error.name !== "AbortError") {
+          console.error("Error loading data:", error);
+        }
+      }
+    };
+
+    fetchData();
+
+    return () => controller.abort(); // Cleanup on unmount
+  }, []);
+
+  useEffect(() => {
+    if (fetchedState.current != 1) {
+      return () => {};
+    }
+    fetchedState.current = 2;
+
+    const fetchData = async () => {
+      await loadNextPage(state.searchText, state.nextPage);
+      setState((previous) => ({ ...previous }));
+    };
+    fetchData()
+  }, [state.data]);
+
+  useEffect(() => {
+    if (fetchedState.current < 2) {
+      return () => {};
+    }
+
+    console.log("after initialized");
+
     cancelRef.current?.abort();
     cancelRef.current = new AbortController();
     loadNextPage(state.searchText, state.nextPage, cancelRef.current?.signal);
@@ -118,10 +192,10 @@ export default function Command() {
     };
   }, [loadNextPage, state.searchText, state.nextPage]);
 
+
   const onLoadMore = useCallback(() => {
     setState((previous) => ({ ...previous, nextPage: previous.nextPage + 1 }));
   }, []);
-
 
   return (
     <List isShowingDetail
@@ -131,7 +205,7 @@ export default function Command() {
         <List.EmptyView icon={{ fileIcon: downloadsFolder }} title="No screenshots found" description="¯\_(ツ)_/¯" />
       )}
 
-      {state.data.map((item) => {
+      {state.visibleData.map((item) => {
         const fullUrl = `${preferences.ziplineBaseUrl}${item.fileInfo.url}`;
 
         let markdown = "";
