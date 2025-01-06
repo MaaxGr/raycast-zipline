@@ -7,6 +7,10 @@ import { getExtensionPreferences } from "./preferences";
 const preferences = getExtensionPreferences();
 export const downloadsFolder = untildify(preferences.defaultFileLocation);
 
+export function createMarkdownImage(url: string) {
+  return `![Image Preview](${url}?raycast-height=350)`
+}
+
 export function getScreenshots() {
   console.log("Getting screenshots from", downloadsFolder, "with force refresh");
   // Clear require cache if necessary (e.g., for dynamic imports)

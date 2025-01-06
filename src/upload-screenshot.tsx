@@ -1,7 +1,7 @@
 import { ActionPanel, Action, List, showToast, Toast, open } from "@raycast/api";
 import { useState } from "react";
 import {
-  containsMdSupportedExtension,
+  containsMdSupportedExtension, createMarkdownImage,
   downloadsFolder,
   getScreenshots,
   isTextFile,
@@ -59,7 +59,7 @@ export default function Command() {
         let markdown = "";
 
         if (containsMdSupportedExtension(path)) {
-          markdown = `![Image Preview](${encodeURI(path)}?raycast-height=350)`;
+          markdown = createMarkdownImage(encodeURI(path))
         } else if (!isBinaryFileSync(path)) {
           markdown = readFirstCharacters(path, 10_000);
         } else {

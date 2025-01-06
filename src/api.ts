@@ -43,9 +43,10 @@ export async function uploadContent(
 
 }
 
-export async function getPage(pageNumber: number = 1): Promise<FileInfo[]> {
+export async function getPage(pageNumber: number = 1, favorite: boolean): Promise<FileInfo[]> {
+  let favoriteString = favorite ? "true" : "";
   const preferences = getExtensionPreferences();
-  const response = await axios.get<FileInfo[]>(`${preferences.ziplineBaseUrl}/api/user/paged?page=${pageNumber}`, {
+  const response = await axios.get<FileInfo[]>(`${preferences.ziplineBaseUrl}/api/user/paged?page=${pageNumber}&favorite=${favoriteString}`, {
     headers: {
       "Authorization": preferences.ziplineApiToken,
     }
@@ -56,13 +57,17 @@ export async function getPage(pageNumber: number = 1): Promise<FileInfo[]> {
     console.log("Failed to fetch page", response.statusText);
   }
 
-
   return response.data;
 }
 
 export async function getFileContent(url: string) {
-  const response = await axios.get<string>(url);
-  return response.data;
+  try {
+    const response = await axios.get<string>(url);
+    return response.data;
+
+  } catch (ex) {
+    return "Raw endpoint not supported.";
+  }
 }
 
 

@@ -1,14 +1,12 @@
-import { Action, ActionPanel, Clipboard, Icon, List, showToast, Toast, useNavigation } from "@raycast/api";
+import { Icon, List, useNavigation } from "@raycast/api";
 import { useEffect, useState } from "react";
-import { containsMdSupportedExtension, downloadsFolder, isDisplayableMIMEType, readFirstCharacters } from "./utils";
+import { createMarkdownImage, downloadsFolder, isDisplayableMIMEType } from "./utils";
 import { getExtensionPreferences } from "./preferences";
-import { isBinaryFileSync } from "isbinaryfile";
-import { FileInfo, getFileContent, getPage, uploadContent } from "./api";
-import { it } from "node:test";
+import { FileInfo, getFileContent, getPage } from "./api";
 
 export interface RichFileInfo {
   fileInfo: FileInfo;
-  fileContent: string|null;
+  fileContent: string | null;
 }
 
 export default function Command() {
@@ -18,7 +16,9 @@ export default function Command() {
 
   useEffect(() => {
     async function init() {
-      const data = await getPage()
+      const data1 = await getPage(1, true);
+      const data2 = await getPage(1, false);
+      const data = data1.concat(data2).sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
 
       const richData = await Promise.all(
         data.map(async (fileInfo) => {
@@ -40,7 +40,7 @@ export default function Command() {
             fileInfo,
             fileContent,
           };
-        })
+        }),
       );
 
       setItems(richData);
@@ -49,7 +49,6 @@ export default function Command() {
     init();
   }, []);
 
-
   return (
     <List isShowingDetail>
       {items.length === 0 && (
@@ -57,7 +56,6 @@ export default function Command() {
       )}
 
       {items.map((item) => {
-
         const fullUrl = `${preferences.ziplineBaseUrl}${item.fileInfo.url}`;
 
         let markdown = "";
@@ -68,8 +66,20 @@ export default function Command() {
           } else {
             markdown = "```" + item.fileContent + "```";
           }
-        } else  {
-          markdown = `![Image Preview](${JSON.stringify(item.fileInfo)})`;
+        } else {
+          markdown = createMarkdownImage(fullUrl);
+        }
+
+        const date = new Date(item.fileInfo.createdAt);
+        const favoriteIcon = item.fileInfo.favorite ? Icon.Star : null;
+        const expiresString = item.fileInfo.expiresAt
+        let expiryAccessory = {}
+        if (expiresString != null) {
+          const expiryDate = new Date(expiresString)
+          expiryAccessory = {
+            icon: Icon.Clock,
+            tooltip: `Expires at: ${expiryDate.toLocaleString()}`,
+          }
         }
 
         return (
@@ -77,7 +87,16 @@ export default function Command() {
             key={item.fileInfo.name}
             title={item.fileInfo.name}
             detail={<List.Item.Detail markdown={markdown} />}
-
+            accessories={[
+              expiryAccessory,
+              {
+                icon: favoriteIcon,
+              },
+              {
+                date: date,
+                tooltip: `Uploaded at: ${date.toLocaleString()}`,
+              },
+            ]}
           />
         );
       })}
