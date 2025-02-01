@@ -49,6 +49,20 @@
       "description": "The default location where the screenshot are saved",
       "type": "directory",
       "default": "~/Desktop"
+    },
+    {
+      "name": "openBrowserAfterUpload",
+      "title": "Open in Browser after Upload",
+      "description": "Open the uploaded file in the browser after the upload is complete",
+      "type": "checkbox",
+      "default": false
+    },
+    {
+      "name": "copyLinkToClipboardAfterUpload",
+      "title": "Copy Link to Clipboard after Upload",
+      "description": "Copy the link to the clipboard after the upload is complete",
+      "type": "checkbox",
+      "default": true
     }
   ],
   "dependencies": {

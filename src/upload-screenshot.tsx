@@ -1,4 +1,4 @@
-import { ActionPanel, Action, List, showToast, Toast, open } from "@raycast/api";
+import { ActionPanel, Action, List, showToast, Toast, open, Clipboard } from "@raycast/api";
 import { useState } from "react";
 import {
   containsMdSupportedExtension, createMarkdownImage,
@@ -34,9 +34,21 @@ export default function Command() {
 
       if (response.status === 200) {
         let uploadUrl = response.data.files[0] as string;
-        await open(response.data.files[0] as string);
 
-        await showToast(Toast.Style.Success, "Upload successful!");
+        if (preferences.copyLinkToClipboardAfterUpload) {
+          await Clipboard.copy(uploadUrl);
+        }
+
+        if (preferences.openBrowserAfterUpload) {
+          await open(uploadUrl);
+        }
+
+        let toastText = "Upload successful!";
+        if (preferences.copyLinkToClipboardAfterUpload) {
+          toastText += " Link copied to clipboard.";
+        }
+
+        await showToast(Toast.Style.Success, toastText);
       } else {
         await showToast(Toast.Style.Failure, "Upload failed", response.statusText);
       }

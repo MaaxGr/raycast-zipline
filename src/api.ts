@@ -1,5 +1,5 @@
 import axios from "axios";
-import { open, showToast, Toast, useNavigation } from "@raycast/api";
+import { open, showToast, Toast, Clipboard, useNavigation } from "@raycast/api";
 import { getExtensionPreferences } from "./preferences";
 import FormData from "form-data";
 import fs from "node:fs";
@@ -34,9 +34,21 @@ export async function uploadContent(
 
   if (response.status === 200) {
     const uploadUrl = response.data.files[0] as string;
-    await open(uploadUrl)
 
-    await showToast(Toast.Style.Success, "Upload successful!");
+    if (preferences.copyLinkToClipboardAfterUpload) {
+      await Clipboard.copy(uploadUrl);
+    }
+
+    if (preferences.openBrowserAfterUpload) {
+      await open(uploadUrl);
+    }
+
+    let toastText = "Upload successful!";
+    if (preferences.copyLinkToClipboardAfterUpload) {
+      toastText += " Link copied to clipboard.";
+    }
+
+    await showToast(Toast.Style.Success, toastText);
   } else {
     await showToast(Toast.Style.Failure, "Upload failed", response.statusText);
   }
