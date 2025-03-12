@@ -55,28 +55,16 @@ export async function uploadContent(
 
 }
 
-export async function getPageCount(favorite: boolean): Promise<number> {
-  const favoriteString = favorite ? "true" : "";
+export async function getPage(pageNumber: number = 1, pageSize: number): Promise<FileResponse> {
   const preferences = getExtensionPreferences();
-  const response = await axios.get<{count: number}>(`${preferences.ziplineBaseUrl}/api/user/paged?count=true&favorite=${favoriteString}`, {
-    headers: {
-      "Authorization": preferences.ziplineApiToken,
-    }
-  });
-  return response.data.count;
-}
-
-export async function getPage(pageNumber: number = 1, favorite: boolean): Promise<FileInfo[]> {
-  const favoriteString = favorite ? "true" : "";
-  const preferences = getExtensionPreferences();
-  const response = await axios.get<FileInfo[]>(`${preferences.ziplineBaseUrl}/api/user/paged?page=${pageNumber}&favorite=${favoriteString}`, {
+  const response = await axios.get<FileResponse>(`${preferences.ziplineBaseUrl}/api/user/files?page=${pageNumber}&perpage=${pageSize}`, {
     headers: {
       "Authorization": preferences.ziplineApiToken,
     }
   });
 
   if (response.status != 200) {
-    console.log("url", `${preferences.ziplineBaseUrl}/api/user/paged?page=${pageNumber}`);
+    console.log("url", `${preferences.ziplineBaseUrl}/api/user/files?page=${pageNumber}`);
     console.log("Failed to fetch page", response.statusText);
   }
 
@@ -93,12 +81,17 @@ export async function getFileContent(url: string) {
   }
 }
 
+export interface FileResponse {
+  page: FileInfo[]
+  total: number
+  pages: number
+}
 
 export interface FileInfo {
   createdAt: string; // ISO string for creation date
   expiresAt: string | null; // ISO string for expiration or null if none
   name: string; // Name of the file
-  mimetype: string; // MIME type of the file
+  type: string; // MIME type of the file
   id: number; // Unique identifier for the file
   favorite: boolean; // Whether the file is marked as favorite
   views: number; // Number of views the file has
