@@ -21,8 +21,6 @@ type State = {
 const pageSize = 16;
 
 
-
-
 export default function Command() {
   const preferences = getExtensionPreferences();
 
@@ -50,49 +48,8 @@ export default function Command() {
     return items;
   }
 
-
-/*
-  useEffect(() => {
-    async function init() {
-      const data1 = await getPage(1, true);
-      const data2 = await getPage(1, false);
-      const data = data1.concat(data2).sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
-
-      const richData = await Promise.all(
-        data.map(async (fileInfo) => {
-          let fileContent: string | null = null;
-
-          // Fetch file content if the MIME type is displayable
-          if (isDisplayableMIMEType(fileInfo.mimetype)) {
-            let url = `${preferences.ziplineBaseUrl}${fileInfo.url}`.replace("/u/", "/raw/");
-
-            if (fileInfo.password == true) {
-              fileContent = "Password protected files are not supported";
-            } else {
-              fileContent = await getFileContent(url);
-            }
-          }
-
-          // Return enriched file info
-          return {
-            fileInfo,
-            fileContent,
-          };
-        }),
-      );
-
-      setItems(richData);
-    }
-
-    init();
-  }, []);
-
- */
-
-
   const loadNextPage = useCallback(async (searchText: string, nextPage: number, signal?: AbortSignal) => {
     console.log("loadNextPage", nextPage, state.data.length);
-    //setState((previous) => ({ ...previous, isLoading: true }));
 
     const subsetData = state.data.slice(0, Math.min(nextPage * pageSize, state.data.length))
       .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
@@ -145,8 +102,6 @@ export default function Command() {
 
     const controller = new AbortController();
     cancelRef.current = controller;
-
-    console.log("INITIAL LOAD AAAAAH");
 
     const fetchData = async () => {
       try {

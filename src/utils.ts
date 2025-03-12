@@ -70,7 +70,7 @@ export function readFirstCharacters(filePath: string, sampleSize: number): strin
     fs.closeSync(fd);
 
     return content;
-  } catch (err) {
+  } catch (err: any) {
     console.error("Error reading file:", err.message);
     return "";
   }

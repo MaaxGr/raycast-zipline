@@ -12,46 +12,16 @@ import axios from "axios";
 import FormData from "form-data";
 import { getExtensionPreferences } from "./preferences";
 import { isBinaryFile, isBinaryFileSync } from "isbinaryfile";
+import { uploadContent } from "./api";
 
 
 export default function Command() {
   const [screenshots] = useState(getScreenshots());
-  const preferences = getExtensionPreferences();
 
   const handleSubmit = async (screenshot: any) => {
     try {
       await showToast(Toast.Style.Animated, "Uploading...");
-
-      const formData = new FormData();
-      formData.append("file", fs.createReadStream(screenshot.path));
-
-      const response = await axios.post(`${preferences.ziplineBaseUrl}/api/upload`, formData, {
-        headers: {
-          "Authorization": preferences.ziplineApiToken,
-          ...formData.getHeaders()
-        }
-      });
-
-      if (response.status === 200) {
-        let uploadUrl = response.data.files[0] as string;
-
-        if (preferences.copyLinkToClipboardAfterUpload) {
-          await Clipboard.copy(uploadUrl);
-        }
-
-        if (preferences.openBrowserAfterUpload) {
-          await open(uploadUrl);
-        }
-
-        let toastText = "Upload successful!";
-        if (preferences.copyLinkToClipboardAfterUpload) {
-          toastText += " Link copied to clipboard.";
-        }
-
-        await showToast(Toast.Style.Success, toastText);
-      } else {
-        await showToast(Toast.Style.Failure, "Upload failed", response.statusText);
-      }
+      await uploadContent({ filePath: screenshot.path, forceImage: false });
     } catch (error: any) {
       await showToast(Toast.Style.Failure, "Error", error.message);
     }
@@ -65,11 +35,8 @@ export default function Command() {
 
       {screenshots.map((screenshot) => {
         const path = screenshot.path
-        const stats = fs.statSync(path);
-        const fileSize = `${(stats.size / 1024).toFixed(2)} KB`;
 
-        let markdown = "";
-
+        let markdown;
         if (containsMdSupportedExtension(path)) {
           markdown = createMarkdownImage(encodeURI(path))
         } else if (!isBinaryFileSync(path)) {
