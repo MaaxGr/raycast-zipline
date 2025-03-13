@@ -91,6 +91,10 @@ export function containsMdSupportedExtension(filePath: string): boolean {
 }
 
 export function isDisplayableMIMEType(mimeType: string): boolean {
+  if (mimeType.startsWith("text/")) {
+    return true;
+  }
+
   const nonBinaryMimeTypes = [
     "text/plain", "text/html", "text/css", "application/javascript", "text/javascript",
     "application/json", "application/xml", "text/xml", "application/rss+xml",
