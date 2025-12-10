@@ -1,29 +1,31 @@
-import { ActionPanel, Action, List, showToast, Toast, open, Clipboard } from "@raycast/api";
+import { ActionPanel, Action, List, showToast, Toast } from "@raycast/api";
 import { useState } from "react";
 import {
-  containsMdSupportedExtension, createMarkdownImage,
+  containsMdSupportedExtension,
+  createMarkdownImage,
   downloadsFolder,
   getScreenshots,
-  isTextFile,
-  readFirstCharacters
+  readFirstCharacters,
 } from "./utils";
-import * as fs from "node:fs";
-import axios from "axios";
-import FormData from "form-data";
-import { getExtensionPreferences } from "./preferences";
-import { isBinaryFile, isBinaryFileSync } from "isbinaryfile";
+import { isBinaryFileSync } from "isbinaryfile";
 import { uploadContent } from "./api";
 
+interface Screenshot {
+  file: string;
+  path: string;
+  lastModifiedAt: Date;
+}
 
 export default function Command() {
-  const [screenshots] = useState(getScreenshots());
+  const [screenshots] = useState<Screenshot[]>(getScreenshots());
 
-  const handleSubmit = async (screenshot: any) => {
+  const handleSubmit = async (screenshot: Screenshot) => {
     try {
-      await showToast(Toast.Style.Animated, "Uploading...");
+      await showToast({ style: Toast.Style.Animated, title: "Uploading..." });
       await uploadContent({ filePath: screenshot.path, forceImage: false });
-    } catch (error: any) {
-      await showToast(Toast.Style.Failure, "Error", error.message);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      await showToast({ style: Toast.Style.Failure, title: "Upload failed", message: errorMessage });
     }
   };
 
@@ -34,18 +36,18 @@ export default function Command() {
       )}
 
       {screenshots.map((screenshot) => {
-        const path = screenshot.path
+        const path = screenshot.path;
 
         let markdown;
         if (containsMdSupportedExtension(path)) {
-          markdown = createMarkdownImage(encodeURI(path))
+          markdown = createMarkdownImage(encodeURI(path));
         } else if (!isBinaryFileSync(path)) {
           markdown = readFirstCharacters(path, 10_000);
         } else {
-          markdown = `## Can't display binary file`
+          markdown = `## Can't display binary file`;
         }
 
-        return(
+        return (
           <List.Item
             key={screenshot.path}
             title={screenshot.file}
@@ -57,18 +59,11 @@ export default function Command() {
                 tooltip: `Last modified: ${screenshot.lastModifiedAt.toLocaleString()}`,
               },
             ]}
-            detail={
-              <List.Item.Detail
-                markdown={markdown || "Can't load preview..."}
-              />
-            }
+            detail={<List.Item.Detail markdown={markdown || "Can't load preview..."} />}
             actions={
               <ActionPanel>
                 <ActionPanel.Section>
-                  <Action
-                    title="Upload File"
-                    onAction={() => handleSubmit(screenshot)}
-                  />
+                  <Action title="Upload File" onAction={() => handleSubmit(screenshot)} />
                   <Action.Open title="Open File" target={screenshot.path} />
                   <Action.ToggleQuickLook shortcut={{ modifiers: ["cmd"], key: "v" }} />
 
@@ -81,7 +76,6 @@ export default function Command() {
                 </ActionPanel.Section>
                 <ActionPanel.Section>
                   <Action.OpenWith path={screenshot.path} shortcut={{ modifiers: ["cmd"], key: "o" }} />
-                  <Action.ToggleQuickLook shortcut={{ modifiers: ["cmd"], key: "y" }} />
                 </ActionPanel.Section>
                 <ActionPanel.Section>
                   <Action.Trash
@@ -98,8 +92,7 @@ export default function Command() {
               </ActionPanel>
             }
           />
-        )
-
+        );
       })}
     </List>
   );

@@ -1,8 +1,8 @@
-import { Icon, List } from "@raycast/api";
+import { Action, ActionPanel, Icon, List, showToast, Toast, confirmAlert, Alert } from "@raycast/api";
 import { useCallback, useEffect, useState } from "react";
-import { createMarkdownImage, downloadsFolder, isDisplayableMIMEType } from "./utils";
+import { createMarkdownImage, isDisplayableMIMEType } from "./utils";
 import { getExtensionPreferences } from "./preferences";
-import { FileInfo, getFileContent, getPage } from "./api";
+import { FileInfo, getFileContent, getPage, deleteFile } from "./api";
 import ListItemAccessory = List.Item.Accessory;
 
 export interface RichFileInfo {
@@ -23,47 +23,104 @@ type State = {
 const pageSize = 15;
 
 export default function Command() {
-  const [state, setState] = useState<State>({ initial: true, isLoading: true, data: [], currentPage: 0, totalPages: 0, wantsPage: 1, hasMore: false });
+  const [state, setState] = useState<State>({
+    initial: true,
+    isLoading: true,
+    data: [],
+    currentPage: 0,
+    totalPages: 0,
+    wantsPage: 1,
+    hasMore: false,
+  });
+  const preferences = getExtensionPreferences();
 
-  useEffect(() => {
-    async function loadMore() {
-      setState((previous) => ({ ...previous, isLoading: true }));
-      const pageInfo = await getPageRich(state.wantsPage, pageSize);
+  const loadData = useCallback(
+    async (resetPage = false) => {
+      const targetPage = resetPage ? 1 : state.wantsPage;
+      setState((previous) => ({ ...previous, isLoading: true, wantsPage: targetPage }));
+      const pageInfo = await getPageRich(targetPage, pageSize);
       setState((previous) => {
         return {
           ...previous,
-          data: state.wantsPage == 1 ? pageInfo.items : [...previous.data, ...pageInfo.items],
+          data: targetPage == 1 ? pageInfo.items : [...previous.data, ...pageInfo.items],
           isLoading: false,
-          currentPage: state.wantsPage,
+          currentPage: targetPage,
           totalPages: pageInfo.pages,
-          hasMore: state.wantsPage < pageInfo.pages,
-        }
+          hasMore: targetPage < pageInfo.pages,
+        };
       });
-    }
+    },
+    [state.wantsPage],
+  );
 
-    loadMore();
+  useEffect(() => {
+    loadData();
   }, [state.wantsPage]);
 
   const onLoadMore = useCallback(() => {
     setState((previous) => {
-      return ({ ...previous, wantsPage: previous.wantsPage + 1, hasMore: false })
+      return { ...previous, wantsPage: previous.wantsPage + 1, hasMore: false };
     });
   }, []);
 
+  const handleDelete = async (item: RichFileInfo) => {
+    if (
+      await confirmAlert({
+        title: "Delete File",
+        message: `Are you sure you want to delete "${item.fileInfo.name}"?`,
+        primaryAction: { title: "Delete", style: Alert.ActionStyle.Destructive },
+      })
+    ) {
+      try {
+        await deleteFile(item.fileInfo.id);
+        await showToast({ style: Toast.Style.Success, title: "File deleted" });
+        await loadData(true);
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : "Please try again";
+        await showToast({ style: Toast.Style.Failure, title: "Failed to delete file", message: errorMessage });
+      }
+    }
+  };
+
   return (
-    <List isShowingDetail
-          isLoading={state.isLoading}
-          pagination={{ onLoadMore, hasMore: state.hasMore, pageSize }}>
-      {state.data.length === 0 && (
-        <List.EmptyView icon={{ fileIcon: downloadsFolder }} title="No files found" description="¯\_(ツ)_/¯" />
+    <List isShowingDetail isLoading={state.isLoading} pagination={{ onLoadMore, hasMore: state.hasMore, pageSize }}>
+      {state.data.length === 0 && !state.isLoading && (
+        <List.EmptyView icon={Icon.Document} title="No files found" description="Upload some files first" />
       )}
       {state.data.map((item) => {
+        const fullUrl = `${preferences.ziplineBaseUrl}${item.fileInfo.url}`;
+
         return (
           <List.Item
-            key={item.fileInfo.name}
+            key={item.fileInfo.id}
             title={item.fileInfo.name}
+            subtitle={item.fileInfo.originalName || undefined}
+            icon={Icon.Document}
             detail={<List.Item.Detail markdown={getMarkdownContent(item)} />}
             accessories={buildAccessories(item)}
+            actions={
+              <ActionPanel>
+                <ActionPanel.Section>
+                  <Action.CopyToClipboard title="Copy URL" content={fullUrl} />
+                  <Action.OpenInBrowser title="Open in Browser" url={fullUrl} />
+                </ActionPanel.Section>
+                <ActionPanel.Section>
+                  <Action
+                    title="Refresh"
+                    icon={Icon.ArrowClockwise}
+                    shortcut={{ modifiers: ["cmd"], key: "r" }}
+                    onAction={() => loadData(true)}
+                  />
+                  <Action
+                    title="Delete File"
+                    icon={Icon.Trash}
+                    style={Action.Style.Destructive}
+                    shortcut={{ modifiers: ["ctrl"], key: "x" }}
+                    onAction={() => handleDelete(item)}
+                  />
+                </ActionPanel.Section>
+              </ActionPanel>
+            }
           />
         );
       })}
@@ -98,7 +155,7 @@ async function getPageRich(page: number, pageSize: number) {
         };
       }),
     ),
-  }
+  };
 }
 
 function getMarkdownContent(item: RichFileInfo) {
@@ -107,9 +164,9 @@ function getMarkdownContent(item: RichFileInfo) {
 
   if (item.fileContent != null) {
     if (item.fileInfo.name.endsWith(".md")) {
-      return  item.fileContent;
+      return item.fileContent;
     } else {
-      return  "```" + item.fileContent + "```";
+      return "```" + item.fileContent + "```";
     }
   } else {
     return createMarkdownImage(fullUrl);
@@ -123,19 +180,25 @@ function buildAccessories(item: RichFileInfo): ListItemAccessory[] {
       icon: item.fileInfo.favorite ? Icon.Star : null,
     },
     {
+      icon: Icon.Eye,
+      text: item.fileInfo.views.toString(),
+      tooltip: `${item.fileInfo.views} views`,
+    },
+    {
       date: date,
       tooltip: `Uploaded at: ${date.toLocaleString()}`,
-    }
-  ]
+    },
+  ];
 
-  const expiresString = item.fileInfo.expiresAt
-  if (expiresString != null) {
-    const expiryDate = new Date(expiresString)
+  // Use deletesAt instead of expiresAt for v4 API
+  const deletesAtString = item.fileInfo.deletesAt;
+  if (deletesAtString != null) {
+    const expiryDate = new Date(deletesAtString);
 
     accessories.unshift({
       icon: Icon.Clock,
-      tooltip: `Expires at: ${expiryDate.toLocaleString()}`,
-    })
+      tooltip: `Deletes at: ${expiryDate.toLocaleString()}`,
+    });
   }
 
   return accessories;
