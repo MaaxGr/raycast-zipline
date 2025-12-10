@@ -2,7 +2,7 @@
   "$schema": "https://www.raycast.com/schemas/extension.json",
   "name": "zipline",
   "title": "Zipline",
-  "description": "Screenshot Uploader for Zipline",
+  "description": "File uploader and URL shortener for Zipline v4",
   "icon": "extension-icon.png",
   "author": "maaxgr",
   "categories": [
@@ -13,20 +13,38 @@
   "commands": [
     {
       "name": "upload-screenshot",
-      "title": "Upload Screenshot",
-      "description": "",
+      "title": "Upload File",
+      "description": "Browse and upload files from a folder to Zipline",
       "mode": "view"
     },
     {
       "name": "upload-clipboard",
       "title": "Upload from Clipboard",
-      "description": "",
+      "description": "Select and upload content from clipboard history",
+      "mode": "view"
+    },
+    {
+      "name": "upload-clipboard-quick",
+      "title": "Quick Upload Clipboard",
+      "description": "Instantly upload current clipboard content (files, images, text, or shorten URLs)",
+      "mode": "no-view"
+    },
+    {
+      "name": "shorten-url",
+      "title": "Shorten URL",
+      "description": "Create a shortened URL with optional custom alias",
       "mode": "view"
     },
     {
       "name": "manage-zipline-files",
-      "title": "Manage Zipline files",
-      "description": "",
+      "title": "Manage Files",
+      "description": "View, copy, and delete uploaded files",
+      "mode": "view"
+    },
+    {
+      "name": "manage-urls",
+      "title": "Manage Shortened URLs",
+      "description": "View, copy, and delete shortened URLs",
       "mode": "view"
     }
   ],
@@ -34,51 +52,59 @@
     {
       "name": "ziplineBaseUrl",
       "title": "Zipline Base URL",
-      "description": "",
-      "type": "textfield"
+      "description": "The URL of your Zipline instance (e.g., https://zipline.example.com)",
+      "type": "textfield",
+      "required": true
     },
     {
       "name": "ziplineApiToken",
       "title": "Zipline API Token",
-      "description": "",
-      "type": "password"
+      "description": "Your Zipline API token (found in Dashboard → Profile → Copy Token)",
+      "type": "password",
+      "required": true
     },
     {
       "name": "defaultFileLocation",
       "title": "Default File Location",
-      "description": "The default location where the screenshot are saved",
+      "description": "The default location where files to upload are located",
       "type": "directory",
-      "default": "~/Desktop"
+      "default": "~/Desktop",
+      "required": false
     },
     {
       "name": "openBrowserAfterUpload",
       "title": "Open in Browser after Upload",
+      "label": "Open in Browser",
       "description": "Open the uploaded file in the browser after the upload is complete",
       "type": "checkbox",
-      "default": false
+      "default": false,
+      "required": false
     },
     {
       "name": "copyLinkToClipboardAfterUpload",
       "title": "Copy Link to Clipboard after Upload",
+      "label": "Copy Link",
       "description": "Copy the link to the clipboard after the upload is complete",
       "type": "checkbox",
-      "default": true
+      "default": true,
+      "required": false
     }
   ],
   "dependencies": {
-    "@raycast/api": "^1.86.0",
-    "@raycast/utils": "^1.17.0",
-    "axios": "^1.7.9",
-    "isbinaryfile": "^5.0.4",
-    "untildify": "^5.0.0"
+    "@raycast/api": "^1.103.10",
+    "@raycast/utils": "^2.2.2",
+    "axios": "^1.13.2",
+    "form-data": "^4.0.5",
+    "isbinaryfile": "^6.0.0",
+    "untildify": "^6.0.0"
   },
   "devDependencies": {
-    "@raycast/eslint-config": "^1.0.11",
-    "@types/node": "20.8.10",
-    "@types/react": "18.3.3",
-    "eslint": "^8.57.0",
-    "prettier": "^3.3.3",
-    "typescript": "^5.4.5"
+    "@raycast/eslint-config": "^2.1.1",
+    "@types/node": "24.10.1",
+    "@types/react": "19.2.7",
+    "eslint": "^9.39.1",
+    "prettier": "^3.7.4",
+    "typescript": "^5.9.3"
   },
   "scripts": {
     "build": "ray build",

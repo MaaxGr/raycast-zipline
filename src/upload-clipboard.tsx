@@ -1,34 +1,40 @@
 import { Action, ActionPanel, Clipboard, Icon, List, showToast, Toast, useNavigation } from "@raycast/api";
 import { useEffect, useState } from "react";
 import { containsMdSupportedExtension, downloadsFolder, readFirstCharacters } from "./utils";
-import { getExtensionPreferences } from "./preferences";
 import { isBinaryFileSync } from "isbinaryfile";
 import { uploadContent } from "./api";
 
 export default function Command() {
-  const [clipboard, setClipboard] = useState<Clipboard.ReadContent[]>([]); // State to hold loaded data
-  const preferences = getExtensionPreferences();
+  const [clipboard, setClipboard] = useState<Clipboard.ReadContent[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     async function loadClipboardContent() {
-      const initialItems: Clipboard.ReadContent[] = (
-        await Promise.all(
-          [0, 1, 2, 3, 4, 5].map(async (index) => {
-            return await Clipboard.read({ offset: index });
-          }),
-        )
-      ).filter((item) => item.text !== undefined);
-      setClipboard(initialItems);
+      try {
+        const initialItems: Clipboard.ReadContent[] = (
+          await Promise.all(
+            Array.from({ length: 6 }, (_, i) => i).map(async (index) => {
+              return await Clipboard.read({ offset: index });
+            }),
+          )
+        ).filter((item) => item.text !== undefined);
+        setClipboard(initialItems);
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : "Unknown error";
+        await showToast({ style: Toast.Style.Failure, title: "Failed to read clipboard", message: errorMessage });
+      } finally {
+        setIsLoading(false);
+      }
     }
 
-    loadClipboardContent(); // Call the async function
+    loadClipboardContent();
   }, []);
 
   const navigation = useNavigation();
 
   const handleUpload = async (clipboardItem: Clipboard.ReadContent) => {
     try {
-      await showToast(Toast.Style.Animated, "Uploading...");
+      await showToast({ style: Toast.Style.Animated, title: "Uploading..." });
 
       if (clipboardItem.file != undefined) {
         const path = decodeURI(clipboardItem.file?.replace("file://", ""));
@@ -39,18 +45,23 @@ export default function Command() {
       }
 
       navigation.pop();
-    } catch (error: any) {
-      await showToast(Toast.Style.Failure, "Error", error.message);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      await showToast({ style: Toast.Style.Failure, title: "Upload failed", message: errorMessage });
     }
   };
 
   return (
-    <List isShowingDetail>
-      {clipboard.length === 0 && (
-        <List.EmptyView icon={{ fileIcon: downloadsFolder }} title="No screenshots found" description="¯\_(ツ)_/¯" />
+    <List isShowingDetail isLoading={isLoading}>
+      {clipboard.length === 0 && !isLoading && (
+        <List.EmptyView
+          icon={{ fileIcon: downloadsFolder }}
+          title="No clipboard content"
+          description="Copy something to your clipboard first"
+        />
       )}
 
-      {clipboard.map((clipboardItem) => {
+      {clipboard.map((clipboardItem, index) => {
         let markdown = "";
         const path = clipboardItem.file?.replace("file://", "");
 
@@ -66,14 +77,14 @@ export default function Command() {
           markdown = "```\n" + clipboardItem.text + "\n```";
         }
 
-        let icon: any = Icon.Document;
+        let icon: Icon | { fileIcon: string } = Icon.Document;
         if (clipboardItem.file != null) {
           icon = { fileIcon: clipboardItem.file };
         }
 
         return (
           <List.Item
-            key={clipboardItem.text}
+            key={`${index}-${clipboardItem.file ?? clipboardItem.text}`}
             title={clipboardItem.text}
             icon={icon}
             detail={<List.Item.Detail markdown={markdown} />}
