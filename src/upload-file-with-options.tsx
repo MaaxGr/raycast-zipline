@@ -14,6 +14,7 @@ import { uploadContent, UploadOptions } from "./api";
 interface UploadOptionsFormValues {
   maxViews: string;
   deletesAfter: string;
+  deletesAfterCustom: string;
   password: string;
 }
 
@@ -96,8 +97,9 @@ function FileSelectionScreen({ options }: { options: UploadOptions }) {
 export default function Command() {
   const navigation = useNavigation();
   const [isLoading, setIsLoading] = useState(false);
+  const [showCustomDeletesAfter, setShowCustomDeletesAfter] = useState(false);
 
-  const { handleSubmit, itemProps } = useForm<UploadOptionsFormValues>({
+  const { handleSubmit, itemProps, setValue, values } = useForm<UploadOptionsFormValues>({
     async onSubmit(values) {
       setIsLoading(true);
       try {
@@ -110,7 +112,10 @@ export default function Command() {
           }
         }
 
-        if (values.deletesAfter && values.deletesAfter !== "never") {
+        // Use custom value if "custom" is selected and custom field has value, otherwise use dropdown value
+        if (values.deletesAfter === "custom" && values.deletesAfterCustom.trim()) {
+          options.deletesAt = values.deletesAfterCustom.trim();
+        } else if (values.deletesAfter && values.deletesAfter !== "never" && values.deletesAfter !== "custom") {
           options.deletesAt = values.deletesAfter;
         }
 
@@ -135,13 +140,28 @@ export default function Command() {
           }
         }
       },
+      deletesAfterCustom: (value) => {
+        if (values.deletesAfter === "custom" && (!value || !value.trim())) {
+          return "Custom deletion time is required when Custom is selected";
+        }
+      },
     },
     initialValues: {
       maxViews: "",
       deletesAfter: "never",
+      deletesAfterCustom: "",
       password: "",
     },
   });
+
+  // Update custom field visibility when dropdown changes
+  const handleDeletesAfterChange = (value: string) => {
+    setValue("deletesAfter", value);
+    setShowCustomDeletesAfter(value === "custom");
+    if (value !== "custom") {
+      setValue("deletesAfterCustom", "");
+    }
+  };
 
   return (
     <Form
@@ -160,17 +180,37 @@ export default function Command() {
       />
       <Form.Separator />
       <Form.Dropdown
+        id="deletesAfter"
         title="Deletes After"
         info="Time interval when the file should be automatically deleted"
-        {...itemProps.deletesAfter}
+        value={values.deletesAfter}
+        onChange={handleDeletesAfterChange}
       >
         <Form.Dropdown.Item value="never" title="Never" />
+        <Form.Dropdown.Item value="30m" title="30 Minutes" />
         <Form.Dropdown.Item value="1h" title="1 Hour" />
+        <Form.Dropdown.Item value="2h" title="2 Hours" />
+        <Form.Dropdown.Item value="6h" title="6 Hours" />
+        <Form.Dropdown.Item value="12h" title="12 Hours" />
         <Form.Dropdown.Item value="1d" title="1 Day" />
+        <Form.Dropdown.Item value="2d" title="2 Days" />
+        <Form.Dropdown.Item value="3d" title="3 Days" />
         <Form.Dropdown.Item value="1w" title="1 Week" />
+        <Form.Dropdown.Item value="2w" title="2 Weeks" />
         <Form.Dropdown.Item value="1m" title="1 Month" />
+        <Form.Dropdown.Item value="3m" title="3 Months" />
+        <Form.Dropdown.Item value="6m" title="6 Months" />
         <Form.Dropdown.Item value="1y" title="1 Year" />
+        <Form.Dropdown.Item value="custom" title="Custom" />
       </Form.Dropdown>
+      {showCustomDeletesAfter && (
+        <Form.TextField
+          title="Custom Deletion Time"
+          placeholder='e.g., "2h", "5d", or "date=2025-12-31T23:59:59Z"'
+          info="Enter relative time (e.g., 2h, 5d) or absolute date (e.g., date=2025-12-31T23:59:59Z)"
+          {...itemProps.deletesAfterCustom}
+        />
+      )}
       <Form.PasswordField
         title="Password"
         placeholder="Optional password"
