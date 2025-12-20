@@ -11,6 +11,7 @@ import {
 } from "./utils";
 import { isBinaryFileSync } from "isbinaryfile";
 import { uploadContent, UploadOptions } from "./api";
+import { getCommandPreferences } from "./preferences";
 
 interface UploadOptionsFormValues {
   maxViews: string;
@@ -99,6 +100,7 @@ export default function Command() {
   const navigation = useNavigation();
   const [isLoading, setIsLoading] = useState(false);
   const [showCustomDeletesAfter, setShowCustomDeletesAfter] = useState(false);
+  const localePreferences = getCommandPreferences();
 
   const { handleSubmit, itemProps, setValue, values } = useForm<UploadOptionsFormValues>({
     async onSubmit(values) {
@@ -119,7 +121,7 @@ export default function Command() {
           // Validate the custom input before proceeding
           const isIsoDate = trimmed.includes("T") || /^\d{4}-\d{2}-\d{2}/.test(trimmed) || trimmed.startsWith("date=");
           const isRelativeTime = trimmed.match(/^\d+[hdwmy]$/i);
-          const parsed = parseDeletionTime(trimmed);
+          const parsed = parseDeletionTime(trimmed, localePreferences);
           
           // If it's not a valid format, show error and prevent submission
           if (!parsed && !isRelativeTime && !isIsoDate) {
@@ -169,7 +171,7 @@ export default function Command() {
           // Check if it's already a valid ISO date (with or without "date=" prefix)
           const isIsoDate = trimmed.includes("T") || /^\d{4}-\d{2}-\d{2}/.test(trimmed) || trimmed.startsWith("date=");
           const isRelativeTime = trimmed.match(/^\d+[hdwmy]$/i);
-          const parsed = parseDeletionTime(trimmed);
+          const parsed = parseDeletionTime(trimmed, localePreferences);
           
           // If it's not a relative time format, not an ISO date, and parsing failed, show error
           if (!parsed && !isRelativeTime && !isIsoDate) {

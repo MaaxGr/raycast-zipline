@@ -33,7 +33,72 @@
       "name": "upload-file-with-options",
       "title": "Upload File with Options",
       "description": "Upload a file to Zipline with configurable options",
-      "mode": "view"
+      "mode": "view",
+      "preferences": [
+        {
+          "name": "dateParsingLocale_en",
+          "title": "English",
+          "label": "English",
+          "description": "Enable English date parsing",
+          "type": "checkbox",
+          "default": true,
+          "required": false
+        },
+        {
+          "name": "dateParsingLocale_de",
+          "title": "German",
+          "label": "German",
+          "description": "Enable German date parsing",
+          "type": "checkbox",
+          "default": false,
+          "required": false
+        },
+        {
+          "name": "dateParsingLocale_fr",
+          "title": "French",
+          "label": "French",
+          "description": "Enable French date parsing",
+          "type": "checkbox",
+          "default": false,
+          "required": false
+        },
+        {
+          "name": "dateParsingLocale_nl",
+          "title": "Dutch",
+          "label": "Dutch",
+          "description": "Enable Dutch date parsing",
+          "type": "checkbox",
+          "default": false,
+          "required": false
+        },
+        {
+          "name": "dateParsingLocale_ru",
+          "title": "Russian",
+          "label": "Russian",
+          "description": "Enable Russian date parsing",
+          "type": "checkbox",
+          "default": false,
+          "required": false
+        },
+        {
+          "name": "dateParsingLocale_ja",
+          "title": "Japanese",
+          "label": "Japanese",
+          "description": "Enable Japanese date parsing",
+          "type": "checkbox",
+          "default": false,
+          "required": false
+        },
+        {
+          "name": "dateParsingLocale_uk",
+          "title": "Ukrainian",
+          "label": "Ukrainian",
+          "description": "Enable Ukrainian date parsing",
+          "type": "checkbox",
+          "default": false,
+          "required": false
+        }
+      ]
     },
     {
       "name": "shorten-url",

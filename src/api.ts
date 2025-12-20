@@ -22,13 +22,22 @@ export async function uploadContent(
   content: { textContent: string } | { filePath: string; forceImage: boolean },
   options?: UploadOptions,
 ): Promise<UploadResult> {
+  console.log("uploadContent: Starting upload", {
+    contentType: "textContent" in content ? "text" : "file",
+    filePath: "filePath" in content ? content.filePath : undefined,
+    forceImage: "filePath" in content ? content.forceImage : undefined,
+    options,
+  });
+
   const formData = new FormData();
 
   if ("textContent" in content) {
     formData.append("file", Readable.from(content.textContent), "text.txt");
+    console.log("uploadContent: Added text content to formData");
   } else if ("filePath" in content) {
     const filename = content.forceImage ? "image.png" : undefined;
     formData.append("file", fs.createReadStream(content.filePath), filename);
+    console.log("uploadContent: Added file to formData", { filePath: content.filePath, filename });
   } else {
     throw new Error("Invalid content provided. Must include textContent or filePath.");
   }
@@ -47,25 +56,33 @@ export async function uploadContent(
     // Relative time formats (1h, 2d, etc.) are used as-is
     const isAbsoluteDate = options.deletesAt.includes("T") || /^\d{4}-\d{2}-\d{2}/.test(options.deletesAt);
     headers["x-zipline-deletes-at"] = isAbsoluteDate ? `date=${options.deletesAt}` : options.deletesAt;
+    console.log("uploadContent: Added deletesAt header", { deletesAt: headers["x-zipline-deletes-at"] });
   }
   if (options?.password) {
     headers["x-zipline-password"] = options.password;
+    console.log("uploadContent: Added password header");
   }
   if (options?.maxViews) {
     headers["x-zipline-max-views"] = options.maxViews.toString();
+    console.log("uploadContent: Added maxViews header", { maxViews: options.maxViews });
   }
   if (options?.folder) {
     headers["x-zipline-folder"] = options.folder;
+    console.log("uploadContent: Added folder header", { folder: options.folder });
   }
 
+  console.log("uploadContent: Sending request to", `${preferences.ziplineBaseUrl}/api/upload`);
   const response = await axios.post(`${preferences.ziplineBaseUrl}/api/upload`, formData, {
     headers,
   });
+
+  console.log("uploadContent: Response status", response.status);
 
   if (response.status === 200) {
     // Zipline v4 returns files array with objects containing id, type, and url
     const fileData = response.data.files[0] as { id: string; type: string; url: string };
     const uploadUrl = fileData.url;
+    console.log("uploadContent: Upload successful", { url: uploadUrl, id: fileData.id, type: fileData.type });
 
     if (preferences.copyLinkToClipboardAfterUpload) {
       await Clipboard.copy(uploadUrl);
@@ -88,6 +105,7 @@ export async function uploadContent(
       type: fileData.type,
     };
   } else {
+    console.log("uploadContent: Upload failed", { status: response.status, statusText: response.statusText });
     await showToast(Toast.Style.Failure, "Upload failed", response.statusText);
     throw new Error(`Upload failed: ${response.statusText}`);
   }

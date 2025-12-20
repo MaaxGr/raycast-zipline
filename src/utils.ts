@@ -3,8 +3,20 @@ import { join } from "path";
 import untildify from "untildify";
 import * as fs from "node:fs";
 // @ts-ignore - chrono-node doesn't have type definitions
-import * as chrono from "chrono-node";
-import { getExtensionPreferences } from "./preferences";
+import * as chronoEN from "chrono-node";
+// @ts-ignore - chrono-node locale imports
+import * as chronoDE from "chrono-node/de";
+// @ts-ignore - chrono-node locale imports
+import * as chronoFR from "chrono-node/fr";
+// @ts-ignore - chrono-node locale imports
+import * as chronoNL from "chrono-node/nl";
+// @ts-ignore - chrono-node locale imports
+import * as chronoRU from "chrono-node/ru";
+// @ts-ignore - chrono-node locale imports
+import * as chronoJA from "chrono-node/ja";
+// @ts-ignore - chrono-node locale imports
+import * as chronoUK from "chrono-node/uk";
+import { getExtensionPreferences, CommandPreferences } from "./preferences";
 
 const preferences = getExtensionPreferences();
 export const downloadsFolder = untildify(preferences.defaultFileLocation);
@@ -125,9 +137,10 @@ export function isDisplayableMIMEType(mimeType: string): boolean {
  * - Natural language (via chrono-node): "tomorrow", "next week", "in 3 days", "March 15, 2026", etc.
  *
  * @param input - The date/time input string
+ * @param localePreferences - Optional command preferences for enabled locales. If not provided, defaults to English only.
  * @returns The formatted string (ISO date without "date=" prefix, or relative time as-is), or null if parsing fails
  */
-export function parseDeletionTime(input: string): string | null {
+export function parseDeletionTime(input: string, localePreferences?: CommandPreferences): string | null {
   const trimmed = input.trim();
   if (!trimmed) {
     return null;
@@ -158,17 +171,79 @@ export function parseDeletionTime(input: string): string | null {
 
   // Try chrono-node for natural language and various date formats
   const now = new Date();
-  const chronoResult = chrono.parseDate(trimmed, now);
   
-  let date: Date | null = null;
+  // Determine which locales to use based on preferences
+  const enabledParsers: Array<typeof chronoEN> = [];
   
-  if (chronoResult && !isNaN(chronoResult.getTime())) {
-    date = chronoResult;
-    // If no time is specified, set to end of day (23:59:59)
-    if (date && !trimmed.match(/\d{1,2}:\d{2}/)) {
-      date.setHours(23, 59, 59, 999);
+  if (localePreferences) {
+    // Map locale preferences to parser instances
+    if (localePreferences.dateParsingLocale_en !== false) {
+      enabledParsers.push(chronoEN);
+    }
+    if (localePreferences.dateParsingLocale_de === true) {
+      enabledParsers.push(chronoDE);
+    }
+    if (localePreferences.dateParsingLocale_fr === true) {
+      enabledParsers.push(chronoFR);
+    }
+    if (localePreferences.dateParsingLocale_nl === true) {
+      enabledParsers.push(chronoNL);
+    }
+    if (localePreferences.dateParsingLocale_ru === true) {
+      enabledParsers.push(chronoRU);
+    }
+    if (localePreferences.dateParsingLocale_ja === true) {
+      enabledParsers.push(chronoJA);
+    }
+    if (localePreferences.dateParsingLocale_uk === true) {
+      enabledParsers.push(chronoUK);
     }
   } else {
+    // Default to English only if no preferences provided
+    enabledParsers.push(chronoEN);
+  }
+  
+  // Try parsing with each enabled locale
+  let date: Date | null = null;
+  let chronoResult: Date | null = null;
+  let parseResult: chronoEN.ParsedResult[] | null = null;
+  
+  for (const parser of enabledParsers) {
+    try {
+      // Handle both default export and namespace export
+      const parserInstance = (parser as any).default || parser;
+      chronoResult = parserInstance.parseDate(trimmed, now, { forwardDate: true });
+      parseResult = parserInstance.parse(trimmed, now, { forwardDate: true });
+      console.log('Result', chronoResult, JSON.stringify(parseResult, null, 2))
+      if (chronoResult && !isNaN(chronoResult.getTime())) {
+        date = chronoResult;
+        const startDate = parseResult?.[0]?.start;
+        if (startDate && !startDate.isCertain("second")) {
+          date.setSeconds(59);
+        }
+        if (startDate && !startDate.isCertain("minute")) {
+          date.setMinutes(59);
+        }
+        if (startDate && !startDate.isCertain("hour")) {
+          date.setHours(23);
+        }
+        if (startDate && !startDate.isCertain("month")) {
+          date.setMonth(11);
+        }
+        if (startDate && !startDate.isCertain("day")) {
+          date.setMonth(date.getMonth() + 1, 0)
+        }
+        break;
+      }
+    } catch (error) {
+      // Continue to next locale if this one fails
+      continue;
+    }
+  }
+  
+  console.log('Date before', date)
+
+  if (!date) {
     // Fallback to manual parsing for specific formats that chrono might not handle well
     // DD.MM.YYYY or DD-MM-YYYY
     const ddmmyyyy = trimmed.match(/^(\d{1,2})[.\-](\d{1,2})[.\-](\d{4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?$/);
@@ -206,6 +281,8 @@ export function parseDeletionTime(input: string): string | null {
       }
     }
   }
+
+  console.log('Date', date)
 
   // If we successfully parsed a date, format it for Zipline (without "date=" prefix)
   if (date && !isNaN(date.getTime())) {
