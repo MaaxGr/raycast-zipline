@@ -7,6 +7,7 @@ import {
   downloadsFolder,
   getScreenshots,
   readFirstCharacters,
+  parseDeletionTime,
 } from "./utils";
 import { isBinaryFileSync } from "isbinaryfile";
 import { uploadContent, UploadOptions } from "./api";
@@ -114,7 +115,25 @@ export default function Command() {
 
         // Use custom value if "custom" is selected and custom field has value, otherwise use dropdown value
         if (values.deletesAfter === "custom" && values.deletesAfterCustom.trim()) {
-          options.deletesAt = values.deletesAfterCustom.trim();
+          const trimmed = values.deletesAfterCustom.trim();
+          // Validate the custom input before proceeding
+          const isIsoDate = trimmed.includes("T") || /^\d{4}-\d{2}-\d{2}/.test(trimmed) || trimmed.startsWith("date=");
+          const isRelativeTime = trimmed.match(/^\d+[hdwmy]$/i);
+          const parsed = parseDeletionTime(trimmed);
+          
+          // If it's not a valid format, show error and prevent submission
+          if (!parsed && !isRelativeTime && !isIsoDate) {
+            await showToast({
+              style: Toast.Style.Failure,
+              title: "Invalid date format",
+              message: "Use formats like: 05.01.2026, 01/05/2026, 2026-01-05, tomorrow, or relative time (1h, 2d)",
+            });
+            setIsLoading(false);
+            return;
+          }
+          
+          // Use parsed value if available, otherwise use the trimmed value (for relative time or ISO)
+          options.deletesAt = parsed || trimmed;
         } else if (values.deletesAfter && values.deletesAfter !== "never" && values.deletesAfter !== "custom") {
           options.deletesAt = values.deletesAfter;
         }
@@ -141,8 +160,30 @@ export default function Command() {
         }
       },
       deletesAfterCustom: (value) => {
-        if (values.deletesAfter === "custom" && (!value || !value.trim())) {
-          return "Custom deletion time is required when Custom is selected";
+        if (values.deletesAfter === "custom") {
+          if (!value || !value.trim()) {
+            return "Custom deletion time is required when Custom is selected";
+          }
+          // Try to parse the value to validate it
+          const trimmed = value.trim();
+          // Check if it's already a valid ISO date (with or without "date=" prefix)
+          const isIsoDate = trimmed.includes("T") || /^\d{4}-\d{2}-\d{2}/.test(trimmed) || trimmed.startsWith("date=");
+          const isRelativeTime = trimmed.match(/^\d+[hdwmy]$/i);
+          const parsed = parseDeletionTime(trimmed);
+          
+          // If it's not a relative time format, not an ISO date, and parsing failed, show error
+          if (!parsed && !isRelativeTime && !isIsoDate) {
+            return "Invalid date format. Use formats like: 05.01.2026, 01/05/2026, 2026-01-05, tomorrow, or relative time (1h, 2d)";
+          }
+          
+          // Additional validation: if parsed date is in the past, show error
+          if (parsed && parsed.includes("T")) {
+            const date = new Date(parsed);
+            const now = new Date();
+            if (date.getTime() <= now.getTime()) {
+              return "Deletion date must be in the future";
+            }
+          }
         }
       },
     },
@@ -206,8 +247,8 @@ export default function Command() {
       {showCustomDeletesAfter && (
         <Form.TextField
           title="Custom Deletion Time"
-          placeholder='e.g., "2h", "5d", or "date=2025-12-31T23:59:59Z"'
-          info="Enter relative time (e.g., 2h, 5d) or absolute date (e.g., date=2025-12-31T23:59:59Z)"
+          placeholder='e.g., "2h", "05.01.2026", "tomorrow", or "2026-01-05"'
+          info="Supports: relative time (1h, 2d), dates (05.01.2026, 01/05/2026, 2026-01-05), or natural language (tomorrow, next week)"
           {...itemProps.deletesAfterCustom}
         />
       )}

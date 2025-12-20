@@ -111,3 +111,124 @@ export function isDisplayableMIMEType(mimeType: string): boolean {
 
   return nonBinaryMimeTypes.includes(mimeType.toLowerCase());
 }
+
+/**
+ * Parses a freestyle date/time input and converts it to Zipline API format.
+ * Supports:
+ * - Relative time: "1h", "2d", "3w", etc. (returns as-is)
+ * - ISO format: "2025-12-31T23:59:59Z" or "date=2025-12-31T23:59:59Z" (returns ISO without "date=" prefix)
+ * - DD.MM.YYYY or DD-MM-YYYY: "05.01.2026" or "05-01-2026"
+ * - MM/DD/YYYY: "01/05/2026"
+ * - YYYY-MM-DD: "2026-01-05"
+ * - Natural language: "tomorrow", "next week", "next month", etc.
+ *
+ * @param input - The date/time input string
+ * @returns The formatted string (ISO date without "date=" prefix, or relative time as-is), or null if parsing fails
+ */
+export function parseDeletionTime(input: string): string | null {
+  const trimmed = input.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  // If it's relative time format, return as-is
+  if (trimmed.match(/^\d+[hdwmy]$/i)) {
+    return trimmed;
+  }
+
+  // If it's already in ISO format with "date=" prefix, extract the date part
+  if (trimmed.startsWith("date=")) {
+    const isoDate = trimmed.substring(5); // Remove "date=" prefix
+    // Validate it's a valid ISO date
+    const date = new Date(isoDate);
+    if (!isNaN(date.getTime())) {
+      return isoDate;
+    }
+  }
+
+  // If it's already a valid ISO date string (without prefix), return as-is
+  if (trimmed.match(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/)) {
+    const date = new Date(trimmed);
+    if (!isNaN(date.getTime())) {
+      return trimmed;
+    }
+  }
+
+  // Handle natural language
+  const lower = trimmed.toLowerCase();
+  const now = new Date();
+  let date: Date | null = null;
+
+  if (lower === "tomorrow") {
+    date = new Date(now);
+    date.setDate(date.getDate() + 1);
+    date.setHours(23, 59, 59, 999);
+  } else if (lower === "next week") {
+    date = new Date(now);
+    date.setDate(date.getDate() + 7);
+    date.setHours(23, 59, 59, 999);
+  } else if (lower === "next month") {
+    date = new Date(now);
+    date.setMonth(date.getMonth() + 1);
+    date.setHours(23, 59, 59, 999);
+  } else if (lower === "next year") {
+    date = new Date(now);
+    date.setFullYear(date.getFullYear() + 1);
+    date.setHours(23, 59, 59, 999);
+  } else {
+    // Try parsing various date formats
+    // DD.MM.YYYY or DD-MM-YYYY
+    const ddmmyyyy = trimmed.match(/^(\d{1,2})[.\-](\d{1,2})[.\-](\d{4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?$/);
+    if (ddmmyyyy) {
+      const day = parseInt(ddmmyyyy[1], 10);
+      const month = parseInt(ddmmyyyy[2], 10) - 1; // Month is 0-indexed
+      const year = parseInt(ddmmyyyy[3], 10);
+      const hour = ddmmyyyy[4] ? parseInt(ddmmyyyy[4], 10) : 0;
+      const minute = ddmmyyyy[5] ? parseInt(ddmmyyyy[5], 10) : 0;
+      const second = ddmmyyyy[6] ? parseInt(ddmmyyyy[6], 10) : 0;
+      date = new Date(year, month, day, hour, minute, second);
+    } else {
+      // MM/DD/YYYY
+      const mmddyyyy = trimmed.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?$/);
+      if (mmddyyyy) {
+        const month = parseInt(mmddyyyy[1], 10) - 1; // Month is 0-indexed
+        const day = parseInt(mmddyyyy[2], 10);
+        const year = parseInt(mmddyyyy[3], 10);
+        const hour = mmddyyyy[4] ? parseInt(mmddyyyy[4], 10) : 0;
+        const minute = mmddyyyy[5] ? parseInt(mmddyyyy[5], 10) : 0;
+        const second = mmddyyyy[6] ? parseInt(mmddyyyy[6], 10) : 0;
+        date = new Date(year, month, day, hour, minute, second);
+      } else {
+        // YYYY-MM-DD
+        const yyyymmdd = trimmed.match(/^(\d{4})-(\d{1,2})-(\d{1,2})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?$/);
+        if (yyyymmdd) {
+          const year = parseInt(yyyymmdd[1], 10);
+          const month = parseInt(yyyymmdd[2], 10) - 1; // Month is 0-indexed
+          const day = parseInt(yyyymmdd[3], 10);
+          const hour = yyyymmdd[4] ? parseInt(yyyymmdd[4], 10) : 0;
+          const minute = yyyymmdd[5] ? parseInt(yyyymmdd[5], 10) : 0;
+          const second = yyyymmdd[6] ? parseInt(yyyymmdd[6], 10) : 0;
+          date = new Date(year, month, day, hour, minute, second);
+        } else {
+          // Try native Date parsing as fallback
+          const parsed = new Date(trimmed);
+          if (!isNaN(parsed.getTime())) {
+            date = parsed;
+          }
+        }
+      }
+    }
+  }
+
+  // If we successfully parsed a date, format it for Zipline (without "date=" prefix)
+  if (date && !isNaN(date.getTime())) {
+    // Ensure the date is in the future
+    if (date.getTime() <= now.getTime()) {
+      return null; // Date is in the past
+    }
+    return date.toISOString();
+  }
+
+  // If we couldn't parse it, return null (validation will catch this)
+  return null;
+}

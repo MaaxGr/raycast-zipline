@@ -43,7 +43,10 @@ export async function uploadContent(
 
   // Add optional upload headers
   if (options?.deletesAt) {
-    headers["x-zipline-deletes-at"] = options.deletesAt;
+    // If deletesAt is an absolute date (ISO format), add "date=" prefix
+    // Relative time formats (1h, 2d, etc.) are used as-is
+    const isAbsoluteDate = options.deletesAt.includes("T") || /^\d{4}-\d{2}-\d{2}/.test(options.deletesAt);
+    headers["x-zipline-deletes-at"] = isAbsoluteDate ? `date=${options.deletesAt}` : options.deletesAt;
   }
   if (options?.password) {
     headers["x-zipline-password"] = options.password;
