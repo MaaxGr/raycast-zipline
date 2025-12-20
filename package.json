@@ -30,6 +30,12 @@
       "mode": "no-view"
     },
     {
+      "name": "upload-file-with-options",
+      "title": "Upload File with Options",
+      "description": "Upload a file to Zipline with configurable options",
+      "mode": "view"
+    },
+    {
       "name": "shorten-url",
       "title": "Shorten URL",
       "description": "Create a shortened URL with optional custom alias",
