@@ -247,8 +247,8 @@ export default function Command() {
       {showCustomDeletesAfter && (
         <Form.TextField
           title="Custom Deletion Time"
-          placeholder='e.g., "2h", "05.01.2026", "tomorrow", or "2026-01-05"'
-          info="Supports: relative time (1h, 2d), dates (05.01.2026, 01/05/2026, 2026-01-05), or natural language (tomorrow, next week)"
+          placeholder='e.g., "2h", "05.01.2026", "tomorrow", "in 3 days", or "March 15, 2026"'
+          info="Supports: relative time (1h, 2d), dates (05.01.2026, 01/05/2026, 2026-01-05), or natural language (tomorrow, next week, in 3 days, March 15, 2026)"
           {...itemProps.deletesAfterCustom}
         />
       )}

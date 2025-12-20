@@ -2,6 +2,8 @@ import { readdirSync, statSync } from "node:fs";
 import { join } from "path";
 import untildify from "untildify";
 import * as fs from "node:fs";
+// @ts-ignore - chrono-node doesn't have type definitions
+import * as chrono from "chrono-node";
 import { getExtensionPreferences } from "./preferences";
 
 const preferences = getExtensionPreferences();
@@ -114,13 +116,13 @@ export function isDisplayableMIMEType(mimeType: string): boolean {
 
 /**
  * Parses a freestyle date/time input and converts it to Zipline API format.
- * Supports:
+ * Uses chrono-node for natural language parsing and supports:
  * - Relative time: "1h", "2d", "3w", etc. (returns as-is)
  * - ISO format: "2025-12-31T23:59:59Z" or "date=2025-12-31T23:59:59Z" (returns ISO without "date=" prefix)
  * - DD.MM.YYYY or DD-MM-YYYY: "05.01.2026" or "05-01-2026"
  * - MM/DD/YYYY: "01/05/2026"
  * - YYYY-MM-DD: "2026-01-05"
- * - Natural language: "tomorrow", "next week", "next month", etc.
+ * - Natural language (via chrono-node): "tomorrow", "next week", "in 3 days", "March 15, 2026", etc.
  *
  * @param input - The date/time input string
  * @returns The formatted string (ISO date without "date=" prefix, or relative time as-is), or null if parsing fails
@@ -154,38 +156,29 @@ export function parseDeletionTime(input: string): string | null {
     }
   }
 
-  // Handle natural language
-  const lower = trimmed.toLowerCase();
+  // Try chrono-node for natural language and various date formats
   const now = new Date();
+  const chronoResult = chrono.parseDate(trimmed, now);
+  
   let date: Date | null = null;
-
-  if (lower === "tomorrow") {
-    date = new Date(now);
-    date.setDate(date.getDate() + 1);
-    date.setHours(23, 59, 59, 999);
-  } else if (lower === "next week") {
-    date = new Date(now);
-    date.setDate(date.getDate() + 7);
-    date.setHours(23, 59, 59, 999);
-  } else if (lower === "next month") {
-    date = new Date(now);
-    date.setMonth(date.getMonth() + 1);
-    date.setHours(23, 59, 59, 999);
-  } else if (lower === "next year") {
-    date = new Date(now);
-    date.setFullYear(date.getFullYear() + 1);
-    date.setHours(23, 59, 59, 999);
+  
+  if (chronoResult && !isNaN(chronoResult.getTime())) {
+    date = chronoResult;
+    // If no time is specified, set to end of day (23:59:59)
+    if (date && !trimmed.match(/\d{1,2}:\d{2}/)) {
+      date.setHours(23, 59, 59, 999);
+    }
   } else {
-    // Try parsing various date formats
+    // Fallback to manual parsing for specific formats that chrono might not handle well
     // DD.MM.YYYY or DD-MM-YYYY
     const ddmmyyyy = trimmed.match(/^(\d{1,2})[.\-](\d{1,2})[.\-](\d{4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?$/);
     if (ddmmyyyy) {
       const day = parseInt(ddmmyyyy[1], 10);
       const month = parseInt(ddmmyyyy[2], 10) - 1; // Month is 0-indexed
       const year = parseInt(ddmmyyyy[3], 10);
-      const hour = ddmmyyyy[4] ? parseInt(ddmmyyyy[4], 10) : 0;
-      const minute = ddmmyyyy[5] ? parseInt(ddmmyyyy[5], 10) : 0;
-      const second = ddmmyyyy[6] ? parseInt(ddmmyyyy[6], 10) : 0;
+      const hour = ddmmyyyy[4] ? parseInt(ddmmyyyy[4], 10) : 23;
+      const minute = ddmmyyyy[5] ? parseInt(ddmmyyyy[5], 10) : 59;
+      const second = ddmmyyyy[6] ? parseInt(ddmmyyyy[6], 10) : 59;
       date = new Date(year, month, day, hour, minute, second);
     } else {
       // MM/DD/YYYY
@@ -194,9 +187,9 @@ export function parseDeletionTime(input: string): string | null {
         const month = parseInt(mmddyyyy[1], 10) - 1; // Month is 0-indexed
         const day = parseInt(mmddyyyy[2], 10);
         const year = parseInt(mmddyyyy[3], 10);
-        const hour = mmddyyyy[4] ? parseInt(mmddyyyy[4], 10) : 0;
-        const minute = mmddyyyy[5] ? parseInt(mmddyyyy[5], 10) : 0;
-        const second = mmddyyyy[6] ? parseInt(mmddyyyy[6], 10) : 0;
+        const hour = mmddyyyy[4] ? parseInt(mmddyyyy[4], 10) : 23;
+        const minute = mmddyyyy[5] ? parseInt(mmddyyyy[5], 10) : 59;
+        const second = mmddyyyy[6] ? parseInt(mmddyyyy[6], 10) : 59;
         date = new Date(year, month, day, hour, minute, second);
       } else {
         // YYYY-MM-DD
@@ -205,16 +198,10 @@ export function parseDeletionTime(input: string): string | null {
           const year = parseInt(yyyymmdd[1], 10);
           const month = parseInt(yyyymmdd[2], 10) - 1; // Month is 0-indexed
           const day = parseInt(yyyymmdd[3], 10);
-          const hour = yyyymmdd[4] ? parseInt(yyyymmdd[4], 10) : 0;
-          const minute = yyyymmdd[5] ? parseInt(yyyymmdd[5], 10) : 0;
-          const second = yyyymmdd[6] ? parseInt(yyyymmdd[6], 10) : 0;
+          const hour = yyyymmdd[4] ? parseInt(yyyymmdd[4], 10) : 23;
+          const minute = yyyymmdd[5] ? parseInt(yyyymmdd[5], 10) : 59;
+          const second = yyyymmdd[6] ? parseInt(yyyymmdd[6], 10) : 59;
           date = new Date(year, month, day, hour, minute, second);
-        } else {
-          // Try native Date parsing as fallback
-          const parsed = new Date(trimmed);
-          if (!isNaN(parsed.getTime())) {
-            date = parsed;
-          }
         }
       }
     }
