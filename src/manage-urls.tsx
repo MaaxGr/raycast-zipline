@@ -1,7 +1,7 @@
-import { Action, ActionPanel, Icon, List, showToast, Toast, confirmAlert, Alert } from "@raycast/api";
+import { Action, ActionPanel, Icon, List, showToast, Toast, confirmAlert, Alert, Color } from "@raycast/api";
 import { useCallback, useEffect, useState } from "react";
 import { getExtensionPreferences } from "./preferences";
-import { UrlInfo, getUrls, deleteUrl } from "./api";
+import { UrlInfo, getUrls, deleteUrl, toggleUrlEnabled } from "./api";
 
 type State = {
   isLoading: boolean;
@@ -46,22 +46,51 @@ export default function Command() {
     }
   };
 
+  const handleToggleEnabled = async (url: UrlInfo) => {
+    try {
+      await toggleUrlEnabled(url.id, !url.enabled);
+      await showToast({
+        style: Toast.Style.Success,
+        title: `URL ${!url.enabled ? "enabled" : "disabled"}`,
+      });
+      await loadUrls();
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Please try again";
+      await showToast({
+        style: Toast.Style.Failure,
+        title: `Failed to ${!url.enabled ? "enable" : "disable"} URL`,
+        message: errorMessage,
+      });
+    }
+  };
+
   const preferences = getExtensionPreferences();
+
+  const sortedUrls = [...state.data].sort((a, b) => {
+    // First, sort by enabled status (enabled first)
+    if (a.enabled !== b.enabled) {
+      return b.enabled ? 1 : -1; // enabled (true) comes before disabled (false)
+    }
+    // Then sort alphabetically by display name
+    const nameA = (a.vanity || a.code).toLowerCase();
+    const nameB = (b.vanity || b.code).toLowerCase();
+    return nameA.localeCompare(nameB);
+  });
 
   return (
     <List isLoading={state.isLoading} isShowingDetail>
       {state.data.length === 0 && !state.isLoading && (
         <List.EmptyView icon={Icon.Link} title="No shortened URLs" description="Use 'Shorten URL' to create one" />
       )}
-      {state.data.map((url) => {
+      {sortedUrls.map((url) => {
         const shortUrl = `${preferences.ziplineBaseUrl}/go/${url.vanity || url.code}`;
+        const tintedIcon = { source: Icon.Link, tintColor: url.enabled ? Color.Green : Color.Red };
 
         return (
           <List.Item
             key={url.id}
             title={url.vanity || url.code}
-            subtitle={url.destination}
-            icon={Icon.Link}
+            icon={tintedIcon}
             accessories={[
               { icon: Icon.Eye, text: url.views.toString(), tooltip: `${url.views} views` },
               {
@@ -108,6 +137,12 @@ export default function Command() {
                     icon={Icon.ArrowClockwise}
                     shortcut={{ modifiers: ["cmd"], key: "r" }}
                     onAction={loadUrls}
+                  />
+                  <Action
+                    title={url.enabled ? "Disable URL" : "Enable URL"}
+                    icon={url.enabled ? Icon.XMarkCircle : Icon.CheckCircle}
+                    shortcut={{ modifiers: ["cmd"], key: "e" }}
+                    onAction={() => handleToggleEnabled(url)}
                   />
                   <Action
                     title="Delete URL"

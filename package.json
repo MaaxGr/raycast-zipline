@@ -37,7 +37,7 @@
       "preferences": [
         {
           "name": "dateParsingLocale_en",
-          "title": "English",
+          "title": "Date Parsing Locales",
           "label": "English",
           "description": "Enable English date parsing",
           "type": "checkbox",
@@ -46,7 +46,6 @@
         },
         {
           "name": "dateParsingLocale_de",
-          "title": "German",
           "label": "German",
           "description": "Enable German date parsing",
           "type": "checkbox",
@@ -55,7 +54,6 @@
         },
         {
           "name": "dateParsingLocale_fr",
-          "title": "French",
           "label": "French",
           "description": "Enable French date parsing",
           "type": "checkbox",
@@ -64,7 +62,6 @@
         },
         {
           "name": "dateParsingLocale_nl",
-          "title": "Dutch",
           "label": "Dutch",
           "description": "Enable Dutch date parsing",
           "type": "checkbox",
@@ -73,7 +70,6 @@
         },
         {
           "name": "dateParsingLocale_ru",
-          "title": "Russian",
           "label": "Russian",
           "description": "Enable Russian date parsing",
           "type": "checkbox",
@@ -82,7 +78,6 @@
         },
         {
           "name": "dateParsingLocale_ja",
-          "title": "Japanese",
           "label": "Japanese",
           "description": "Enable Japanese date parsing",
           "type": "checkbox",
@@ -91,7 +86,6 @@
         },
         {
           "name": "dateParsingLocale_uk",
-          "title": "Ukrainian",
           "label": "Ukrainian",
           "description": "Enable Ukrainian date parsing",
           "type": "checkbox",

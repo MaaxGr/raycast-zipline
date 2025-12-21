@@ -10,6 +10,10 @@ export interface UploadOptions {
   password?: string;
   maxViews?: number;
   folder?: string;
+  format?: string;
+  filename?: string;
+  originalName?: boolean;
+  imageCompressionPercent?: number;
 }
 
 export interface UploadResult {
@@ -69,6 +73,24 @@ export async function uploadContent(
   if (options?.folder) {
     headers["x-zipline-folder"] = options.folder;
     console.log("uploadContent: Added folder header", { folder: options.folder });
+  }
+  if (options?.format) {
+    headers["x-zipline-format"] = options.format;
+    console.log("uploadContent: Added format header", { format: options.format });
+  }
+  if (options?.filename) {
+    headers["x-zipline-filename"] = options.filename;
+    console.log("uploadContent: Added filename header", { filename: options.filename });
+  }
+  if (options?.originalName === true) {
+    headers["x-zipline-original-name"] = "true";
+    console.log("uploadContent: Added originalName header");
+  }
+  if (options?.imageCompressionPercent !== undefined) {
+    headers["x-zipline-image-compression-percent"] = options.imageCompressionPercent.toString();
+    console.log("uploadContent: Added imageCompressionPercent header", {
+      compression: options.imageCompressionPercent,
+    });
   }
 
   console.log("uploadContent: Sending request to", `${preferences.ziplineBaseUrl}/api/upload`);
@@ -210,6 +232,32 @@ export async function getUrls(): Promise<UrlInfo[]> {
   return response.data;
 }
 
+export interface FolderInfo {
+  id: string;
+  name: string;
+}
+
+export async function getFolders(): Promise<FolderInfo[]> {
+  try {
+    const preferences = getExtensionPreferences();
+    const response = await axios.get<FolderInfo[]>(`${preferences.ziplineBaseUrl}/api/user/folders`, {
+      headers: {
+        Authorization: preferences.ziplineApiToken,
+      },
+    });
+
+    if (response.status === 200) {
+      return response.data;
+    } else {
+      console.log("Failed to fetch folders", response.statusText);
+      return [];
+    }
+  } catch (error) {
+    console.log("Error fetching folders", error);
+    return [];
+  }
+}
+
 export async function deleteUrl(id: string): Promise<void> {
   const preferences = getExtensionPreferences();
   await axios.delete(`${preferences.ziplineBaseUrl}/api/user/urls/${id}`, {
@@ -219,6 +267,20 @@ export async function deleteUrl(id: string): Promise<void> {
   });
 }
 
+export async function toggleUrlEnabled(id: string, enabled: boolean): Promise<void> {
+  const preferences = getExtensionPreferences();
+  await axios.patch(
+    `${preferences.ziplineBaseUrl}/api/user/urls/${id}`,
+    { enabled },
+    {
+      headers: {
+        Authorization: preferences.ziplineApiToken,
+        "Content-Type": "application/json",
+      },
+    },
+  );
+}
+
 export async function deleteFile(id: string): Promise<void> {
   const preferences = getExtensionPreferences();
   await axios.delete(`${preferences.ziplineBaseUrl}/api/user/files/${id}`, {
@@ -226,6 +288,20 @@ export async function deleteFile(id: string): Promise<void> {
       Authorization: preferences.ziplineApiToken,
     },
   });
+}
+
+export async function toggleFileFavorite(id: string, favorite: boolean): Promise<void> {
+  const preferences = getExtensionPreferences();
+  await axios.patch(
+    `${preferences.ziplineBaseUrl}/api/user/files/${id}`,
+    { favorite },
+    {
+      headers: {
+        Authorization: preferences.ziplineApiToken,
+        "Content-Type": "application/json",
+      },
+    },
+  );
 }
 
 export async function getFileContent(url: string) {
